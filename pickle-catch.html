@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pickle Catch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anybody:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F1F9F3;
+    --dark:#00352C;
+    --darker:#001F1A;
+    --accent:#54D35E;
+    --font-display:'Anybody', Helvetica, Arial, sans-serif;
+    --font-body:Helvetica, Arial, sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  html,body{
+    margin:0; padding:0; height:100%;
+    background:var(--bg);
+    font-family:var(--font-body);
+    color:var(--dark);
+    overflow:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+  #app{
+    position:relative;
+    width:100%;
+    height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+
+  /* -------- shared screen styling -------- */
+  .screen{
+    position:absolute;
+    inset:0;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    padding:24px;
+    transition:opacity .35s ease;
+  }
+  .hidden{ display:none !important; }
+
+  .eyebrow{
+    font-family:var(--font-display);
+    font-weight:600;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    font-size:12px;
+    color:var(--accent);
+    background:var(--darker);
+    padding:6px 14px;
+    border-radius:999px;
+    margin-bottom:18px;
+  }
+  h1{
+    font-family:var(--font-display);
+    font-weight:800;
+    font-size:clamp(32px,7vw,58px);
+    line-height:1.02;
+    margin:0 0 10px;
+    color:var(--darker);
+  }
+  h1 span{ color:var(--accent); -webkit-text-stroke:1.5px var(--darker); }
+  p.sub{
+    max-width:420px;
+    font-size:16px;
+    line-height:1.5;
+    color:var(--dark);
+    opacity:.85;
+    margin:0 0 28px;
+  }
+
+  .btn{
+    font-family:var(--font-display);
+    font-weight:700;
+    font-size:16px;
+    letter-spacing:.02em;
+    color:var(--bg);
+    background:var(--dark);
+    border:none;
+    padding:16px 34px;
+    border-radius:100px;
+    cursor:pointer;
+    transition:transform .15s ease, background .15s ease;
+  }
+  .btn:hover{ background:var(--darker); transform:translateY(-2px); }
+  .btn:active{ transform:translateY(0); }
+  .btn.accent{ background:var(--accent); color:var(--darker); }
+  .btn.accent:hover{ background:#46bd50; }
+  .btn.ghost{
+    background:transparent; color:var(--dark);
+    border:2px solid var(--dark);
+    padding:14px 30px;
+  }
+  .btn.ghost:hover{ background:var(--dark); color:var(--bg); }
+  .btn[disabled]{ opacity:.45; cursor:not-allowed; }
+
+  /* -------- start screen jar illustration -------- */
+  .hero-jar{ width:120px; height:auto; margin-bottom:6px; }
+
+  /* -------- game screen -------- */
+  #screen-game{ padding:0; justify-content:flex-start; }
+  #hud{
+    width:100%;
+    max-width:900px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:18px 22px 10px;
+    font-family:var(--font-display);
+  }
+  #hud .stat{ text-align:left; }
+  #hud .stat .label{
+    font-size:11px; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--dark); opacity:.6; font-weight:600;
+  }
+  #hud .stat .value{ font-size:26px; font-weight:800; color:var(--darker); }
+  #lives{ display:flex; gap:6px; font-size:20px; }
+  #lives span{ opacity:.25; transition:opacity .2s; }
+  #lives span.alive{ opacity:1; }
+
+  #brine-wrap{
+    width:100%; max-width:900px; padding:0 22px;
+  }
+  #brine-track{
+    width:100%; height:10px; background:var(--darker);
+    border-radius:100px; overflow:hidden;
+  }
+  #brine-fill{
+    height:100%; width:100%;
+    background:var(--accent);
+    transform-origin:left;
+    transition:width .1s linear;
+  }
+
+  #game-area{
+    position:relative;
+    width:100%;
+    max-width:900px;
+    flex:1;
+    margin-top:8px;
+    overflow:hidden;
+    cursor:none;
+    border-top:2px dashed rgba(0,53,44,.15);
+  }
+  .pickle{
+    position:absolute;
+    font-size:34px;
+    line-height:1;
+    user-select:none;
+    pointer-events:none;
+    filter:drop-shadow(0 3px 3px rgba(0,31,26,.25));
+    will-change:transform;
+  }
+  .floatscore{
+    position:absolute;
+    font-family:var(--font-display);
+    font-weight:800;
+    color:var(--accent);
+    text-shadow:0 1px 0 var(--darker);
+    pointer-events:none;
+    animation:floatUp .6s ease-out forwards;
+    font-size:18px;
+  }
+  @keyframes floatUp{
+    0%{ opacity:1; transform:translateY(0); }
+    100%{ opacity:0; transform:translateY(-40px); }
+  }
+
+  #jar{
+    position:absolute;
+    bottom:6px;
+    width:92px;
+    height:78px;
+    transform:translateX(-50%);
+    transition:transform .02s linear;
+  }
+  #jar.squish{ animation:squish .18s ease; }
+  @keyframes squish{
+    0%{ transform:translateX(-50%) scale(1,1); }
+    40%{ transform:translateX(-50%) scale(1.14,.86); }
+    100%{ transform:translateX(-50%) scale(1,1); }
+  }
+  #jar svg{ width:100%; height:100%; display:block; }
+
+  /* -------- end screen -------- */
+  #screen-end{ padding:32px 20px; overflow-y:auto; }
+  #final-score{
+    font-family:var(--font-display);
+    font-weight:800;
+    font-size:clamp(48px,10vw,84px);
+    color:var(--accent);
+    -webkit-text-stroke:2px var(--darker);
+    line-height:1;
+    margin:4px 0 2px;
+  }
+  .end-card{
+    background:var(--darker);
+    color:var(--bg);
+    border-radius:24px;
+    padding:28px 26px;
+    max-width:420px;
+    width:100%;
+    margin-top:22px;
+  }
+  .end-card h3{
+    font-family:var(--font-display);
+    font-size:14px;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+    color:var(--accent);
+    margin:0 0 16px;
+  }
+  .field{ text-align:left; margin-bottom:12px; }
+  .field label{
+    display:block; font-size:12px; opacity:.7; margin-bottom:5px;
+    font-family:var(--font-display); letter-spacing:.03em;
+  }
+  .field input{
+    width:100%;
+    padding:11px 13px;
+    border-radius:10px;
+    border:1px solid rgba(241,249,243,.25);
+    background:rgba(241,249,243,.06);
+    color:var(--bg);
+    font-family:var(--font-body);
+    font-size:14px;
+  }
+  .field input::placeholder{ color:rgba(241,249,243,.4); }
+  .field input:focus{ outline:2px solid var(--accent); background:rgba(241,249,243,.1); }
+  .end-actions{ display:flex; flex-direction:column; gap:10px; margin-top:16px; }
+  .save-msg{ font-size:12.5px; margin-top:10px; min-height:16px; color:var(--accent); }
+
+  #leaderboard-wrap{
+    max-width:420px; width:100%; margin-top:26px; text-align:left;
+  }
+  #leaderboard-wrap h3{
+    font-family:var(--font-display);
+    font-size:13px; letter-spacing:.1em; text-transform:uppercase;
+    color:var(--dark); opacity:.7; margin:0 0 10px;
+  }
+  #leaderboard-list{ list-style:none; margin:0; padding:0; }
+  #leaderboard-list li{
+    display:flex; align-items:center; gap:10px;
+    padding:10px 12px;
+    background:#fff;
+    border-radius:12px;
+    margin-bottom:6px;
+    font-size:14px;
+  }
+  #leaderboard-list li .rank{
+    font-family:var(--font-display); font-weight:800;
+    color:var(--accent); width:22px;
+  }
+  #leaderboard-list li .lname{ flex:1; font-weight:600; }
+  #leaderboard-list li .lscore{ font-family:var(--font-display); font-weight:800; color:var(--darker); }
+  #leaderboard-list li.top1{ background:var(--dark); color:var(--bg); }
+  #leaderboard-list li.top1 .lscore{ color:var(--accent); }
+
+  .replay-row{ margin-top:22px; }
+
+  /* -------- winner popup -------- */
+  #popup-overlay{
+    position:fixed; inset:0;
+    background:rgba(0,31,26,.72);
+    display:flex; align-items:center; justify-content:center;
+    z-index:50; padding:20px;
+  }
+  #popup-card{
+    background:var(--bg);
+    border-radius:26px;
+    max-width:380px;
+    width:100%;
+    padding:34px 28px;
+    text-align:center;
+    position:relative;
+  }
+  #popup-card .badge{
+    font-size:44px; margin-bottom:8px;
+  }
+  #popup-card h2{
+    font-family:var(--font-display); font-weight:800;
+    font-size:26px; color:var(--darker); margin:0 0 8px;
+  }
+  #popup-card p{ font-size:14.5px; line-height:1.5; margin:0 0 22px; opacity:.85; }
+  #popup-card .code{
+    font-family:var(--font-display); font-weight:800;
+    background:var(--dark); color:var(--accent);
+    display:inline-block; padding:10px 20px; border-radius:100px;
+    letter-spacing:.08em; margin-bottom:22px; font-size:14px;
+  }
+
+  footer.note{
+    position:absolute; bottom:10px; left:0; right:0;
+    font-size:11px; opacity:.4; text-align:center;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    * { animation-duration:.001ms !important; transition-duration:.001ms !important; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- START SCREEN -->
+  <section id="screen-start" class="screen">
+    <div class="eyebrow">Secret Level Unlocked</div>
+    <svg class="hero-jar" viewBox="0 0 92 78" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="10" y="0" width="72" height="14" rx="6" fill="#54D35E"/>
+      <path d="M6 16C6 12.7 8.7 10 12 10H80C83.3 10 86 12.7 86 16V64C86 71.7 79.7 78 72 78H20C12.3 78 6 71.7 6 64V16Z" fill="#00352C"/>
+      <rect x="16" y="30" width="60" height="8" rx="4" fill="#001F1A" opacity="0.5"/>
+      <rect x="16" y="46" width="60" height="8" rx="4" fill="#001F1A" opacity="0.5"/>
+    </svg>
+    <h1>Catch the <span>Pickles</span></h1>
+    <p class="sub">Move your mouse to slide the jar and catch as many falling pickles as you can. Miss three and it's game over &mdash; land the top spot on the leaderboard and win a prize.</p>
+    <button class="btn accent" id="btn-start">Start the game</button>
+  </section>
+
+  <!-- GAME SCREEN -->
+  <section id="screen-game" class="screen hidden">
+    <div id="hud">
+      <div class="stat">
+        <div class="label">Score</div>
+        <div class="value" id="score-value">0</div>
+      </div>
+      <div id="lives"></div>
+      <div class="stat" style="text-align:right;">
+        <div class="label">Time</div>
+        <div class="value" id="time-value">25</div>
+      </div>
+    </div>
+    <div id="brine-wrap">
+      <div id="brine-track"><div id="brine-fill"></div></div>
+    </div>
+    <div id="game-area">
+      <div id="jar">
+        <svg viewBox="0 0 92 78" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="10" y="0" width="72" height="14" rx="6" fill="#54D35E"/>
+          <path d="M6 16C6 12.7 8.7 10 12 10H80C83.3 10 86 12.7 86 16V64C86 71.7 79.7 78 72 78H20C12.3 78 6 71.7 6 64V16Z" fill="#00352C"/>
+          <rect x="16" y="30" width="60" height="8" rx="4" fill="#001F1A" opacity="0.5"/>
+          <rect x="16" y="46" width="60" height="8" rx="4" fill="#001F1A" opacity="0.5"/>
+        </svg>
+      </div>
+    </div>
+  </section>
+
+  <!-- END SCREEN -->
+  <section id="screen-end" class="screen hidden">
+    <div class="eyebrow" id="end-eyebrow">Game Over</div>
+    <div id="final-score">0</div>
+    <p class="sub" id="end-sub">pickles caught this round.</p>
+
+    <div class="end-card">
+      <h3>Save your score</h3>
+      <div class="field">
+        <label for="input-name">Your name</label>
+        <input type="text" id="input-name" placeholder="e.g. Laurianne" maxlength="30">
+      </div>
+      <div class="field">
+        <label for="input-email">Email (optional &mdash; get your score by email)</label>
+        <input type="email" id="input-email" placeholder="you@email.com">
+      </div>
+      <div class="end-actions">
+        <button class="btn accent" id="btn-save">Add to leaderboard</button>
+        <button class="btn ghost" id="btn-email" style="border-color:var(--accent);color:var(--accent);">Email me my score</button>
+      </div>
+      <div class="save-msg" id="save-msg"></div>
+    </div>
+
+    <div id="leaderboard-wrap">
+      <h3>Leaderboard</h3>
+      <ul id="leaderboard-list"></ul>
+    </div>
+
+    <div class="replay-row">
+      <button class="btn" id="btn-replay">Play again</button>
+    </div>
+  </section>
+
+  <footer class="note">Pickle Catch &middot; a little secret from us to you 🥒</footer>
+</div>
+
+<!-- WINNER POPUP -->
+<div id="popup-overlay" class="hidden">
+  <div id="popup-card">
+    <div class="badge">🏆</div>
+    <h2>New high score!</h2>
+    <p>You just took the top spot on the leaderboard. As a thank you, here's a little something for your first project with us.</p>
+    <div class="code">10% OFF YOUR FIRST PROJECT</div>
+    <div>
+      <button class="btn accent" id="btn-popup-close">Nice, thanks!</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- config ----------
+  const GAME_DURATION = 25; // seconds
+  const MAX_LIVES = 3;
+  const ADMIN_EMAIL = "admin@yourstudio.com"; // TODO: replace with your real inbox
+
+  // ---------- state ----------
+  let score = 0;
+  let lives = MAX_LIVES;
+  let timeLeft = GAME_DURATION;
+  let running = false;
+  let pickles = [];
+  let jarX = 0.5; // 0..1 across game area
+  let lastSpawn = 0;
+  let lastFrame = 0;
+  let elapsed = 0;
+  let rafId = null;
+
+  // ---------- elements ----------
+  const screenStart = document.getElementById('screen-start');
+  const screenGame  = document.getElementById('screen-game');
+  const screenEnd   = document.getElementById('screen-end');
+  const gameArea    = document.getElementById('game-area');
+  const jarEl       = document.getElementById('jar');
+  const scoreEl     = document.getElementById('score-value');
+  const timeEl      = document.getElementById('time-value');
+  const brineFill   = document.getElementById('brine-fill');
+  const livesEl     = document.getElementById('lives');
+  const finalScoreEl= document.getElementById('final-score');
+  const endSubEl    = document.getElementById('end-sub');
+  const saveMsgEl   = document.getElementById('save-msg');
+  const leaderboardList = document.getElementById('leaderboard-list');
+  const popupOverlay = document.getElementById('popup-overlay');
+
+  function renderLives(){
+    livesEl.innerHTML = '';
+    for(let i=0;i<MAX_LIVES;i++){
+      const s = document.createElement('span');
+      s.textContent = '🥒';
+      s.className = i < lives ? 'alive' : '';
+      livesEl.appendChild(s);
+    }
+  }
+
+  // ---------- jar movement ----------
+  gameArea.addEventListener('mousemove', (e)=>{
+    const rect = gameArea.getBoundingClientRect();
+    jarX = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+  });
+  gameArea.addEventListener('touchmove', (e)=>{
+    const rect = gameArea.getBoundingClientRect();
+    const t = e.touches[0];
+    jarX = Math.min(1, Math.max(0, (t.clientX - rect.left) / rect.width));
+    e.preventDefault();
+  }, {passive:false});
+
+  function positionJar(){
+    const rect = gameArea.getBoundingClientRect();
+    const x = jarX * rect.width;
+    jarEl.style.left = x + 'px';
+  }
+
+  // ---------- pickle spawning ----------
+  function spawnPickle(){
+    const rect = gameArea.getBoundingClientRect();
+    const size = 28 + Math.random()*14;
+    const el = document.createElement('div');
+    el.className = 'pickle';
+    el.textContent = '🥒';
+    el.style.fontSize = size + 'px';
+    const x = Math.random() * (rect.width - size);
+    el.style.left = x + 'px';
+    el.style.top = '-40px';
+    gameArea.appendChild(el);
+    pickles.push({
+      el, x, y:-40,
+      w:size, h:size,
+      speed: 140 + Math.random()*60 + progressDifficulty()*180,
+      rot: (Math.random()*60)-30
+    });
+  }
+
+  function progressDifficulty(){
+    // 0 -> 1 over game duration
+    return Math.min(1, elapsed / GAME_DURATION);
+  }
+
+  function spawnInterval(){
+    // starts ~850ms, tightens to ~330ms
+    return 850 - progressDifficulty()*520;
+  }
+
+  // ---------- floating score text ----------
+  function floatScore(x,y){
+    const el = document.createElement('div');
+    el.className = 'floatscore';
+    el.textContent = '+10';
+    el.style.left = x + 'px';
+    el.style.top = y + 'px';
+    gameArea.appendChild(el);
+    setTimeout(()=> el.remove(), 620);
+  }
+
+  // ---------- squish ----------
+  function squishJar(){
+    jarEl.classList.remove('squish');
+    void jarEl.offsetWidth;
+    jarEl.classList.add('squish');
+  }
+
+  // ---------- main loop ----------
+  function loop(ts){
+    if(!running) return;
+    if(!lastFrame) lastFrame = ts;
+    const dt = (ts - lastFrame)/1000;
+    lastFrame = ts;
+    elapsed += dt;
+
+    timeLeft = Math.max(0, GAME_DURATION - elapsed);
+    timeEl.textContent = Math.ceil(timeLeft);
+    brineFill.style.width = (100 * (timeLeft/GAME_DURATION)) + '%';
+
+    // spawn
+    if(ts - lastSpawn > spawnInterval()){
+      spawnPickle();
+      lastSpawn = ts;
+    }
+
+    // jar geometry
+    const rect = gameArea.getBoundingClientRect();
+    positionJar();
+    const jarW = 92, jarCatchW = 66; // effective catch width (narrower than art for fairness)
+    const jarCenterX = jarX*rect.width;
+    const jarTopY = rect.height - 78 - 6 + 18; // catch line near the jar opening
+
+    // update pickles
+    for(let i = pickles.length-1; i>=0; i--){
+      const p = pickles[i];
+      p.y += p.speed*dt;
+      p.el.style.top = p.y + 'px';
+      p.el.style.transform = `rotate(${p.rot}deg)`;
+
+      const pCenterX = p.x + p.w/2;
+
+      if(p.y + p.h*0.5 >= jarTopY && p.y < jarTopY + 30){
+        if(Math.abs(pCenterX - jarCenterX) < jarCatchW/2){
+          // caught
+          score += 10;
+          scoreEl.textContent = score;
+          floatScore(pCenterX, jarTopY-10);
+          squishJar();
+          p.el.remove();
+          pickles.splice(i,1);
+          continue;
+        }
+      }
+
+      if(p.y > rect.height){
+        p.el.remove();
+        pickles.splice(i,1);
+        lives -= 1;
+        renderLives();
+        if(lives <= 0){
+          endGame();
+          return;
+        }
+      }
+    }
+
+    if(timeLeft <= 0){
+      endGame();
+      return;
+    }
+
+    rafId = requestAnimationFrame(loop);
+  }
+
+  // ---------- start / end ----------
+  function startGame(){
+    score = 0; lives = MAX_LIVES; timeLeft = GAME_DURATION; elapsed = 0;
+    lastSpawn = 0; lastFrame = 0;
+    pickles.forEach(p=>p.el.remove());
+    pickles = [];
+    scoreEl.textContent = '0';
+    timeEl.textContent = GAME_DURATION;
+    brineFill.style.width = '100%';
+    renderLives();
+    jarX = 0.5;
+
+    screenStart.classList.add('hidden');
+    screenEnd.classList.add('hidden');
+    screenGame.classList.remove('hidden');
+
+    running = true;
+    rafId = requestAnimationFrame(loop);
+  }
+
+  async function endGame(){
+    running = false;
+    if(rafId) cancelAnimationFrame(rafId);
+    pickles.forEach(p=>p.el.remove());
+    pickles = [];
+
+    finalScoreEl.textContent = score;
+    endSubEl.textContent = score === 10 ? 'pickle caught this round.' : 'pickles caught this round.';
+    saveMsgEl.textContent = '';
+    document.getElementById('input-name').value = '';
+    document.getElementById('input-email').value = '';
+
+    screenGame.classList.add('hidden');
+    screenEnd.classList.remove('hidden');
+
+    await renderLeaderboard();
+  }
+
+  // ---------- leaderboard storage ----------
+  async function getLeaderboard(){
+    try{
+      const res = await window.storage.get('pickle-leaderboard', true);
+      if(res && res.value){
+        const parsed = JSON.parse(res.value);
+        if(Array.isArray(parsed)) return parsed;
+      }
+    }catch(e){ /* no entries yet */ }
+    return [];
+  }
+
+  async function saveScoreToLeaderboard(name, email, scoreValue){
+    const list = await getLeaderboard();
+    list.push({ name, email, score: scoreValue, date: new Date().toISOString() });
+    list.sort((a,b)=> b.score - a.score);
+    const trimmed = list.slice(0, 20);
+    try{
+      await window.storage.set('pickle-leaderboard', JSON.stringify(trimmed), true);
+    }catch(e){ /* storage unavailable */ }
+    return trimmed;
+  }
+
+  async function renderLeaderboard(){
+    const list = await getLeaderboard();
+    leaderboardList.innerHTML = '';
+    if(list.length === 0){
+      const li = document.createElement('li');
+      li.textContent = 'No scores yet — be the first!';
+      leaderboardList.appendChild(li);
+      return;
+    }
+    list.slice(0,10).forEach((entry, idx)=>{
+      const li = document.createElement('li');
+      if(idx === 0) li.classList.add('top1');
+      const rank = document.createElement('span');
+      rank.className = 'rank';
+      rank.textContent = '#' + (idx+1);
+      const name = document.createElement('span');
+      name.className = 'lname';
+      name.textContent = entry.name || 'Anonymous';
+      const sc = document.createElement('span');
+      sc.className = 'lscore';
+      sc.textContent = entry.score;
+      li.appendChild(rank); li.appendChild(name); li.appendChild(sc);
+      leaderboardList.appendChild(li);
+    });
+  }
+
+  // ---------- save score button ----------
+  document.getElementById('btn-save').addEventListener('click', async ()=>{
+    const nameInput = document.getElementById('input-name');
+    const emailInput = document.getElementById('input-email');
+    const name = nameInput.value.trim() || 'Anonymous';
+    const email = emailInput.value.trim();
+    const btn = document.getElementById('btn-save');
+
+    btn.disabled = true;
+    saveMsgEl.textContent = 'Saving…';
+
+    const before = await getLeaderboard();
+    const previousBest = before.length ? before[0].score : 0;
+
+    const updated = await saveScoreToLeaderboard(name, email, score);
+    await renderLeaderboard();
+
+    saveMsgEl.textContent = 'Score saved to the leaderboard.';
+    btn.disabled = false;
+
+    // Trigger the winner popup if this is now the #1 score
+    const isNewTop = updated.length && updated[0].score === score && updated[0].name === name && score > previousBest;
+    // also cover the "ties but is first entry ever" case
+    const isFirstEverTop = before.length === 0 && score > 0;
+    if((isNewTop || isFirstEverTop) && score > 0){
+      popupOverlay.classList.remove('hidden');
+    }
+  });
+
+  // ---------- email score button ----------
+  document.getElementById('btn-email').addEventListener('click', ()=>{
+    const name = document.getElementById('input-name').value.trim() || 'Anonymous';
+    const email = document.getElementById('input-email').value.trim();
+    const subject = encodeURIComponent('My Pickle Catch score: ' + score);
+    const body = encodeURIComponent(
+      `Hey!\n\n${name} just scored ${score} points in Pickle Catch.\n\nSent from the Pickle Catch easter egg.`
+    );
+    let mailto = `mailto:${ADMIN_EMAIL}?subject=${subject}&body=${body}`;
+    if(email){
+      mailto += `&cc=${encodeURIComponent(email)}`;
+    }
+    window.location.href = mailto;
+  });
+
+  document.getElementById('btn-popup-close').addEventListener('click', ()=>{
+    popupOverlay.classList.add('hidden');
+  });
+
+  document.getElementById('btn-start').addEventListener('click', startGame);
+  document.getElementById('btn-replay').addEventListener('click', startGame);
+
+  // initial jar position
+  window.addEventListener('resize', positionJar);
+  positionJar();
+  renderLives();
+})();
+</script>
+</body>
+</html>
